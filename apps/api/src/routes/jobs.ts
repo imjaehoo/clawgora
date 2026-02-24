@@ -269,10 +269,16 @@ app.post("/:id/accept", auth, async (c) => {
     // Idempotency guard: if another request already accepted this job, don't pay again.
     if (!acceptedRows.length) return null;
 
+    const [worker] = await tx.select({ rep: agents.reputation_score, completed: agents.jobs_completed })
+      .from(agents).where(eq(agents.id, job.claimed_by!));
+
+    const newWorkerRep = Math.min(5.0, +(worker.rep * 0.9 + 5.0 * 0.1).toFixed(2));
+
     await tx.update(agents)
       .set({
         credits_balance: sql`${agents.credits_balance} + ${payout}`,
         jobs_completed: sql`${agents.jobs_completed} + 1`,
+        reputation_score: newWorkerRep,
       })
       .where(eq(agents.id, job.claimed_by!));
 
@@ -346,8 +352,16 @@ app.post("/:id/reject", auth, async (c) => {
         .where(eq(jobs.id, currentJob.id));
     }
 
+    const [worker] = await tx.select({ rep: agents.reputation_score })
+      .from(agents).where(eq(agents.id, currentJob.claimed_by!));
+
+    const newWorkerRep = Math.max(1.0, +(worker.rep * 0.9 + 1.0 * 0.1).toFixed(2));
+
     await tx.update(agents)
-      .set({ jobs_rejected: sql`${agents.jobs_rejected} + 1` })
+      .set({
+        jobs_rejected: sql`${agents.jobs_rejected} + 1`,
+        reputation_score: newWorkerRep,
+      })
       .where(eq(agents.id, currentJob.claimed_by!));
 
     if (body.reason && typeof body.reason === "string" && body.reason.trim()) {
@@ -365,6 +379,43 @@ app.post("/:id/reject", auth, async (c) => {
   });
 
   if (!updated) return c.json({ error: "Job is not in delivered status" }, 400);
+  return c.json(jobToApi(updated));
+});
+
+// POST /jobs/:id/cancel
+app.post("/:id/cancel", auth, async (c) => {
+  const [job] = await db.select().from(jobs).where(eq(jobs.id, c.req.param("id")));
+  if (!job) return c.json({ error: "Job not found" }, 404);
+
+  const agent = c.get("agent");
+  if (job.posted_by !== agent.id) return c.json({ error: "Only the poster can cancel" }, 403);
+  if (job.status !== "open") return c.json({ error: "Only open jobs can be cancelled" }, 400);
+
+  const updated = await db.transaction(async (tx) => {
+    const cancelledRows = await tx.update(jobs)
+      .set({ status: "cancelled", closed_at: sql`now()` })
+      .where(and(eq(jobs.id, job.id), eq(jobs.status, "open")))
+      .returning({ id: jobs.id });
+
+    if (!cancelledRows.length) return null;
+
+    await tx.update(agents)
+      .set({ credits_balance: sql`${agents.credits_balance} + ${job.budget}` })
+      .where(eq(agents.id, job.posted_by));
+
+    await tx.insert(creditTransactions).values({
+      id: uuidv4(),
+      agent_id: job.posted_by,
+      job_id: job.id,
+      kind: "job_cancel_refund",
+      amount: job.budget,
+    });
+
+    const [next] = await tx.select().from(jobs).where(eq(jobs.id, job.id));
+    return next;
+  });
+
+  if (!updated) return c.json({ error: "Only open jobs can be cancelled" }, 400);
   return c.json(jobToApi(updated));
 });
 

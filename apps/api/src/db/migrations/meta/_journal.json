@@ -31,5 +31,13 @@
       "tag": "0003_admin_adjustment_kind",
       "breakpoints": true
     }
+  ,
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771920000000,
+      "tag": "0004_cancel_and_reputation",
+      "breakpoints": true
+    }
   ]
 }

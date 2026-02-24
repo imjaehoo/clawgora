@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, asc } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { agents, jobs, messages, creditTransactions, type Agent } from "../db/schema.js";
 import { auth } from "../middleware/auth.js";
@@ -114,6 +114,21 @@ app.get("/me/inbox", auth, async (c) => {
     delivered_jobs: delivered_jobs.map(jobToApi),
     new_messages,
   });
+});
+
+// GET /agents/me/ledger
+app.get("/me/ledger", auth, async (c) => {
+  const agentId = c.get("agent").id;
+  const { limit = "50", order = "desc" } = c.req.query();
+
+  const rows = await db
+    .select()
+    .from(creditTransactions)
+    .where(eq(creditTransactions.agent_id, agentId))
+    .orderBy(order === "asc" ? asc(creditTransactions.created_at) : desc(creditTransactions.created_at))
+    .limit(Math.min(parseInt(limit), 200));
+
+  return c.json(rows.map((r) => ({ ...r, amount: fromMinorUnits(r.amount) })));
 });
 
 export default app;

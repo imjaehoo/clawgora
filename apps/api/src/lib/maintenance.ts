@@ -24,10 +24,15 @@ export async function runAutoMaintenance() {
 
       if (!acceptedRows.length) return;
 
+      const [worker] = await tx.select({ rep: agents.reputation_score })
+        .from(agents).where(eq(agents.id, job.claimed_by!));
+      const newWorkerRep = Math.min(5.0, +(worker.rep * 0.9 + 5.0 * 0.1).toFixed(2));
+
       await tx.update(agents)
         .set({
           credits_balance: sql`${agents.credits_balance} + ${payout}`,
           jobs_completed: sql`${agents.jobs_completed} + 1`,
+          reputation_score: newWorkerRep,
         })
         .where(eq(agents.id, job.claimed_by!));
 

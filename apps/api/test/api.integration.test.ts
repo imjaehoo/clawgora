@@ -185,6 +185,120 @@ test("API integration: deliver -> accept pays worker once", async () => {
   assert.equal(workerMeAgain.jobs_completed, 1);
 });
 
+test("API integration: cancel open job refunds poster", async () => {
+  const poster = await registerAgent("research", "poster-cancel");
+
+  const createRes = await app.request("/jobs", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${poster.api_key}` },
+    body: JSON.stringify({ title: "Cancel me", description: "To be cancelled", category: "research", budget: 20, deadline_minutes: 30 }),
+  });
+  assert.equal(createRes.status, 201);
+  const created = await createRes.json() as { id: string };
+
+  const cancelRes = await app.request(`/jobs/${created.id}/cancel`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${poster.api_key}` },
+  });
+  assert.equal(cancelRes.status, 200);
+  const cancelled = await cancelRes.json() as { status: string };
+  assert.equal(cancelled.status, "cancelled");
+
+  const meRes = await app.request("/agents/me", { method: "GET", headers: { authorization: `Bearer ${poster.api_key}` } });
+  const me = await meRes.json() as { credits_balance: number };
+  assert.equal(me.credits_balance, 100);
+});
+
+test("API integration: cannot cancel claimed job", async () => {
+  const poster = await registerAgent("research", "poster-cancel2");
+  const worker = await registerAgent("research", "worker-cancel2");
+
+  const createRes = await app.request("/jobs", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${poster.api_key}` },
+    body: JSON.stringify({ title: "Claimed job", description: "Already claimed", category: "research", budget: 20, deadline_minutes: 30 }),
+  });
+  const created = await createRes.json() as { id: string };
+
+  await app.request(`/jobs/${created.id}/claim`, { method: "POST", headers: { authorization: `Bearer ${worker.api_key}` } });
+
+  const cancelRes = await app.request(`/jobs/${created.id}/cancel`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${poster.api_key}` },
+  });
+  assert.equal(cancelRes.status, 400);
+});
+
+test("API integration: ledger returns agent transactions", async () => {
+  const poster = await registerAgent("code", "poster-ledger");
+
+  await app.request("/jobs", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${poster.api_key}` },
+    body: JSON.stringify({ title: "Ledger test", description: "Check ledger", category: "code", budget: 10, deadline_minutes: 60 }),
+  });
+
+  const ledgerRes = await app.request("/agents/me/ledger", { method: "GET", headers: { authorization: `Bearer ${poster.api_key}` } });
+  assert.equal(ledgerRes.status, 200);
+  const rows = await ledgerRes.json() as { kind: string; amount: number }[];
+  assert.ok(rows.length >= 2);
+  assert.ok(rows.some((r) => r.kind === "signup_grant" && r.amount === 100));
+  assert.ok(rows.some((r) => r.kind === "job_post_lock" && r.amount === -10));
+});
+
+test("API integration: reputation increases on accept", async () => {
+  const poster = await registerAgent("writing", "poster-rep");
+  const worker = await registerAgent("writing", "worker-rep");
+
+  const createRes = await app.request("/jobs", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${poster.api_key}` },
+    body: JSON.stringify({ title: "Rep test", description: "Good work", category: "writing", budget: 10, deadline_minutes: 60 }),
+  });
+  const created = await createRes.json() as { id: string };
+
+  await app.request(`/jobs/${created.id}/claim`, { method: "POST", headers: { authorization: `Bearer ${worker.api_key}` } });
+  await app.request(`/jobs/${created.id}/deliver`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${worker.api_key}` },
+    body: JSON.stringify({ result_type: "text", result_content: "Done" }),
+  });
+  await app.request(`/jobs/${created.id}/accept`, { method: "POST", headers: { authorization: `Bearer ${poster.api_key}` } });
+
+  const meRes = await app.request("/agents/me", { method: "GET", headers: { authorization: `Bearer ${worker.api_key}` } });
+  const me = await meRes.json() as { reputation_score: number };
+  assert.ok(me.reputation_score === 5, `Expected 5, got ${me.reputation_score}`);
+});
+
+test("API integration: reputation decreases on reject", async () => {
+  const poster = await registerAgent("writing", "poster-rep-rej");
+  const worker = await registerAgent("writing", "worker-rep-rej");
+
+  const createRes = await app.request("/jobs", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${poster.api_key}` },
+    body: JSON.stringify({ title: "Rep reject test", description: "Bad work", category: "writing", budget: 10, deadline_minutes: 60 }),
+  });
+  const created = await createRes.json() as { id: string };
+
+  await app.request(`/jobs/${created.id}/claim`, { method: "POST", headers: { authorization: `Bearer ${worker.api_key}` } });
+  await app.request(`/jobs/${created.id}/deliver`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${worker.api_key}` },
+    body: JSON.stringify({ result_type: "text", result_content: "Subpar" }),
+  });
+  await app.request(`/jobs/${created.id}/reject`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${poster.api_key}` },
+    body: JSON.stringify({ reason: "Not good enough" }),
+  });
+
+  const meRes = await app.request("/agents/me", { method: "GET", headers: { authorization: `Bearer ${worker.api_key}` } });
+  const me = await meRes.json() as { reputation_score: number };
+  // EMA: 5.0 * 0.9 + 1.0 * 0.1 = 4.6
+  assert.equal(me.reputation_score, 4.6);
+});
+
 test("API integration: reject twice expires and refunds poster", async () => {
   const poster = await registerAgent("code", "poster-reject");
   const worker = await registerAgent("code", "worker-reject");
