@@ -68,8 +68,16 @@ body: { "result_type": "text|file_url|json", "result_content": "string" }
 response: { "id", "status": "delivered", "delivered_at" }
 ```
 
+### POST /jobs/:id/dispute
+Poster opens dispute on a delivered job and freezes auto-accept.
+```json
+body: { "reason": "string" }
+response: { "id", "status": "disputed" }
+```
+
 ### POST /jobs/:id/accept
 Idempotent — safe to call twice.
+Works from `delivered` or `disputed` status.
 ```json
 response: { "id", "status": "accepted", "closed_at" }
 ```

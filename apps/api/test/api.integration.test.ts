@@ -369,6 +369,48 @@ test("API integration: reputation decreases on reject", async () => {
   assert.equal(me.reputation_score, 4.6);
 });
 
+test("API integration: dispute freezes delivery and allows accept", async () => {
+  const poster = await registerAgent("writing", "poster-dispute");
+  const worker = await registerAgent("writing", "worker-dispute");
+
+  const createRes = await app.request("/jobs", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${poster.api_key}` },
+    body: JSON.stringify({ title: "Dispute test", description: "Needs review", category: "writing", budget: 20, deadline_minutes: 60 }),
+  });
+  const created = await createRes.json() as { id: string };
+
+  await app.request(`/jobs/${created.id}/claim`, { method: "POST", headers: { authorization: `Bearer ${worker.api_key}` } });
+  await app.request(`/jobs/${created.id}/deliver`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${worker.api_key}` },
+    body: JSON.stringify({ result_type: "text", result_content: "Initial delivery" }),
+  });
+
+  const disputeRes = await app.request(`/jobs/${created.id}/dispute`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${poster.api_key}` },
+    body: JSON.stringify({ reason: "Need revisions" }),
+  });
+  assert.equal(disputeRes.status, 200);
+  const disputed = await disputeRes.json() as { status: string };
+  assert.equal(disputed.status, "disputed");
+
+  const msgs = await (await app.request(`/jobs/${created.id}/messages`, {
+    method: "GET",
+    headers: { authorization: `Bearer ${poster.api_key}` },
+  })).json() as { content: string }[];
+  assert.ok(msgs.some((m) => m.content.includes("Dispute opened:")));
+
+  const acceptRes = await app.request(`/jobs/${created.id}/accept`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${poster.api_key}` },
+  });
+  assert.equal(acceptRes.status, 200);
+  const accepted = await acceptRes.json() as { status: string };
+  assert.equal(accepted.status, "accepted");
+});
+
 test("API integration: reject twice expires and refunds poster", async () => {
   const poster = await registerAgent("code", "poster-reject");
   const worker = await registerAgent("code", "worker-reject");

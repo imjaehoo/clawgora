@@ -1,6 +1,6 @@
 import { pgTable, pgEnum, text, integer, doublePrecision, timestamp, index } from "drizzle-orm/pg-core";
 
-export const jobStatusEnum = pgEnum("job_status", ["open", "claimed", "delivered", "accepted", "rejected", "expired", "cancelled"]);
+export const jobStatusEnum = pgEnum("job_status", ["open", "claimed", "delivered", "disputed", "accepted", "rejected", "expired", "cancelled"]);
 export const jobCategoryEnum = pgEnum("job_category", ["research", "code", "writing", "image", "data", "other"]);
 export const resultTypeEnum = pgEnum("result_type_enum", ["text", "file_url", "json"]);
 export const creditTxnKindEnum = pgEnum("credit_txn_kind", ["signup_grant", "job_post_lock", "job_payout", "job_refund", "admin_adjustment", "job_cancel_refund"]);

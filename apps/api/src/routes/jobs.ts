@@ -128,7 +128,7 @@ app.post("/:id/claim", auth, rateLimit(30), async (c) => {
     .where(
       and(
         eq(jobs.claimed_by, agent.id),
-        sql`${jobs.status} IN ('claimed', 'delivered')`
+        sql`${jobs.status} IN ('claimed', 'delivered', 'disputed')`
       )
     );
   if (activeClaims >= 5) return c.json({ error: "Maximum 5 active claims reached" }, 400);
@@ -250,6 +250,37 @@ app.post("/:id/deliver", auth, async (c) => {
   return c.json(jobToApi(updated));
 });
 
+// POST /jobs/:id/dispute
+app.post("/:id/dispute", auth, async (c) => {
+  const [job] = await db.select().from(jobs).where(eq(jobs.id, c.req.param("id")));
+  if (!job) return c.json({ error: "Job not found" }, 404);
+
+  const agent = c.get("agent");
+  if (job.posted_by !== agent.id) return c.json({ error: "Only the poster can dispute" }, 403);
+  if (job.status !== "delivered") return c.json({ error: "Only delivered jobs can be disputed" }, 400);
+
+  const { reason } = await c.req.json<{ reason?: string }>().catch(() => ({ reason: undefined }));
+  if (!reason || typeof reason !== "string" || !reason.trim()) {
+    return c.json({ error: "reason is required" }, 400);
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.update(jobs)
+      .set({ status: "disputed", closed_at: null })
+      .where(and(eq(jobs.id, job.id), eq(jobs.status, "delivered")));
+
+    await tx.insert(messages).values({
+      id: uuidv4(),
+      job_id: job.id,
+      from_agent_id: agent.id,
+      content: `Dispute opened: ${reason.trim()}`,
+    });
+  });
+
+  const [updated] = await db.select().from(jobs).where(eq(jobs.id, job.id));
+  return c.json(jobToApi(updated));
+});
+
 // POST /jobs/:id/accept
 app.post("/:id/accept", auth, async (c) => {
   const [job] = await db.select().from(jobs).where(eq(jobs.id, c.req.param("id")));
@@ -257,14 +288,16 @@ app.post("/:id/accept", auth, async (c) => {
 
   const agent = c.get("agent");
   if (job.posted_by !== agent.id) return c.json({ error: "Only the poster can accept" }, 403);
-  if (job.status !== "delivered") return c.json({ error: "Job is not in delivered status" }, 400);
+  if (job.status !== "delivered" && job.status !== "disputed") {
+    return c.json({ error: "Job is not in delivered/disputed status" }, 400);
+  }
 
   const payout = computePayoutMinor(job.budget);
 
   const updated = await db.transaction(async (tx) => {
     const acceptedRows = await tx.update(jobs)
       .set({ status: "accepted", closed_at: sql`now()` })
-      .where(and(eq(jobs.id, job.id), eq(jobs.status, "delivered")))
+      .where(and(eq(jobs.id, job.id), sql`${jobs.status} IN ('delivered', 'disputed')`))
       .returning({ id: jobs.id });
 
     // Idempotency guard: if another request already accepted this job, don't pay again.
@@ -299,7 +332,7 @@ app.post("/:id/accept", auth, async (c) => {
     return next;
   });
 
-  if (!updated) return c.json({ error: "Job is not in delivered status" }, 400);
+  if (!updated) return c.json({ error: "Job is not in delivered/disputed status" }, 400);
   return c.json(jobToApi(updated));
 });
 
@@ -310,13 +343,15 @@ app.post("/:id/reject", auth, async (c) => {
 
   const agent = c.get("agent");
   if (job.posted_by !== agent.id) return c.json({ error: "Only the poster can reject" }, 403);
-  if (job.status !== "delivered") return c.json({ error: "Job is not in delivered status" }, 400);
+  if (job.status !== "delivered" && job.status !== "disputed") {
+    return c.json({ error: "Job is not in delivered/disputed status" }, 400);
+  }
 
   const body = await c.req.json<{ reason?: string }>().catch(() => ({ reason: undefined }));
 
   const updated = await db.transaction(async (tx) => {
     const [currentJob] = await tx.select().from(jobs).where(eq(jobs.id, job.id));
-    if (!currentJob || currentJob.status !== "delivered") return null;
+    if (!currentJob || (currentJob.status !== "delivered" && currentJob.status !== "disputed")) return null;
 
     const newRejectCount = currentJob.reject_count + 1;
 
@@ -379,7 +414,7 @@ app.post("/:id/reject", auth, async (c) => {
     return next;
   });
 
-  if (!updated) return c.json({ error: "Job is not in delivered status" }, 400);
+  if (!updated) return c.json({ error: "Job is not in delivered/disputed status" }, 400);
   return c.json(jobToApi(updated));
 });
 
