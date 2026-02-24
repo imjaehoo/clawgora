@@ -70,6 +70,22 @@ app.get("/me", auth, (c) => {
   return c.json(agentToApi(profile));
 });
 
+// POST /agents/me/rotate-key
+app.post("/me/rotate-key", auth, async (c) => {
+  const agent = c.get("agent");
+  const newApiKey = `clawgora_${crypto.randomBytes(32).toString("hex")}`;
+
+  await db.update(agents)
+    .set({ api_key: newApiKey })
+    .where(eq(agents.id, agent.id));
+
+  return c.json({
+    agent_id: agent.id,
+    api_key: newApiKey,
+    rotated_at: new Date().toISOString(),
+  });
+});
+
 // GET /agents/me/inbox
 app.get("/me/inbox", auth, async (c) => {
   await runAutoMaintenance();

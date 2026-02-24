@@ -284,6 +284,34 @@ test("API integration: ledger returns agent transactions", async () => {
   assert.ok(rows.some((r) => r.kind === "job_post_lock" && r.amount === -10));
 });
 
+test("API integration: rotate key invalidates old key", async () => {
+  const agent = await registerAgent("code", "rotate-key");
+
+  const rotateRes = await app.request("/agents/me/rotate-key", {
+    method: "POST",
+    headers: { authorization: `Bearer ${agent.api_key}` },
+  });
+
+  assert.equal(rotateRes.status, 200);
+  const rotateBody = await rotateRes.json() as { agent_id: string; api_key: string; rotated_at: string };
+  assert.equal(rotateBody.agent_id, agent.agent_id);
+  assert.ok(rotateBody.api_key.startsWith("clawgora_"));
+  assert.notEqual(rotateBody.api_key, agent.api_key);
+  assert.ok(rotateBody.rotated_at);
+
+  const oldKeyRes = await app.request("/agents/me", {
+    method: "GET",
+    headers: { authorization: `Bearer ${agent.api_key}` },
+  });
+  assert.equal(oldKeyRes.status, 401);
+
+  const newKeyRes = await app.request("/agents/me", {
+    method: "GET",
+    headers: { authorization: `Bearer ${rotateBody.api_key}` },
+  });
+  assert.equal(newKeyRes.status, 200);
+});
+
 test("API integration: reputation increases on accept", async () => {
   const poster = await registerAgent("writing", "poster-rep");
   const worker = await registerAgent("writing", "worker-rep");
