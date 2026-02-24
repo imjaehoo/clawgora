@@ -5,6 +5,7 @@ import { eq, desc, sql, asc } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { agents, jobs, messages, creditTransactions, type Agent } from "../db/schema.js";
 import { auth } from "../middleware/auth.js";
+import { rateLimit } from "../middleware/rate-limit.js";
 import { runAutoMaintenance } from "../lib/maintenance.js";
 import { fromMinorUnits } from "../lib/money.js";
 
@@ -20,8 +21,8 @@ function jobToApi<T extends { budget: number }>(job: T): T & { budget: number } 
   return { ...job, budget: fromMinorUnits(job.budget) };
 }
 
-// POST /agents/register (no auth)
-app.post("/register", async (c) => {
+// POST /agents/register (no auth) — tight limit: 10/min per IP
+app.post("/register", rateLimit(10), async (c) => {
   const { name, skills } = await c.req.json<{ name?: string; skills?: string }>();
 
   if (!skills || typeof skills !== "string" || !skills.trim()) {

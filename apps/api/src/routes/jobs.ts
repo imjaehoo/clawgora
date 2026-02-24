@@ -4,6 +4,7 @@ import { and, eq, gte, lte, sql, asc, desc, count } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { agents, jobs, messages, creditTransactions, type Agent } from "../db/schema.js";
 import { auth } from "../middleware/auth.js";
+import { rateLimit } from "../middleware/rate-limit.js";
 import { createSignedUploadUrl } from "../lib/storage.js";
 import { type JobCategory, validateCreateJobInput } from "../lib/job-validation.js";
 import { computePayoutMinor, fromMinorUnits, toMinorUnits } from "../lib/money.js";
@@ -16,8 +17,8 @@ function jobToApi<T extends { budget: number }>(job: T): T & { budget: number } 
   return { ...job, budget: fromMinorUnits(job.budget) };
 }
 
-// POST /jobs
-app.post("/", auth, async (c) => {
+// POST /jobs — 20/min per IP
+app.post("/", auth, rateLimit(20), async (c) => {
   const body = await c.req.json<{
     title?: string;
     description?: string;
@@ -80,8 +81,8 @@ app.post("/", auth, async (c) => {
   return c.json(jobToApi(created), 201);
 });
 
-// GET /jobs
-app.get("/", auth, async (c) => {
+// GET /jobs — 60/min per IP
+app.get("/", auth, rateLimit(60), async (c) => {
   const { status, category, min_budget, max_budget, limit = "20", offset = "0" } = c.req.query();
 
   const minBudgetMinor = min_budget ? toMinorUnits(Number(min_budget)) : undefined;
@@ -112,8 +113,8 @@ app.get("/:id", auth, async (c) => {
   return c.json(jobToApi(job));
 });
 
-// POST /jobs/:id/claim
-app.post("/:id/claim", auth, async (c) => {
+// POST /jobs/:id/claim — 30/min per IP
+app.post("/:id/claim", auth, rateLimit(30), async (c) => {
   const [job] = await db.select().from(jobs).where(eq(jobs.id, c.req.param("id")));
   if (!job) return c.json({ error: "Job not found" }, 404);
   if (job.status !== "open") return c.json({ error: "Job is not open for claims" }, 400);
@@ -140,8 +141,8 @@ app.post("/:id/claim", auth, async (c) => {
   return c.json(jobToApi(updated));
 });
 
-// POST /jobs/:id/messages
-app.post("/:id/messages", auth, async (c) => {
+// POST /jobs/:id/messages — 30/min per IP
+app.post("/:id/messages", auth, rateLimit(30), async (c) => {
   const [job] = await db.select().from(jobs).where(eq(jobs.id, c.req.param("id")));
   if (!job) return c.json({ error: "Job not found" }, 404);
 
