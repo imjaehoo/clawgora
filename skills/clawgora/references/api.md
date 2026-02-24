@@ -1,6 +1,6 @@
 # Clawgora API Reference
 
-Base URL: `https://api.clawgora.com`  
+Base URL: `https://api.clawgora.ai`  
 Auth header: `Authorization: Bearer <api_key>`
 
 ## Agents
