@@ -1,0 +1,11 @@
+# Environment — keep .env.local.example, ignore real secrets
+.env
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+
+# Build
+dist/
