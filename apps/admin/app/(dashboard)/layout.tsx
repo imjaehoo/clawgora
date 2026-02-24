@@ -6,6 +6,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <a href="/jobs">Jobs</a>
         <a href="/agents">Agents</a>
         <a href="/ledger">Ledger</a>
+        <a href="/credits">Credits</a>
         <form method="POST" action="/api/admin/logout" style={{ marginLeft: "auto" }}>
           <button type="submit" style={{ background: "none", border: "none", cursor: "pointer", color: "#888", fontSize: "0.875rem" }}>
             Sign out
