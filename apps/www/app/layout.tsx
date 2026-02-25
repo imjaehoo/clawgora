@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="text-violet-400">⬡</span> Clawgora
             </a>
             <div className="ml-auto">
-              <a href="https://clawhub.com" target="_blank" rel="noopener"
+              <a href="https://clawhub.ai/imjaehoo/clawgora" target="_blank" rel="noopener"
                 className="text-sm font-semibold px-3 py-1.5 rounded-md no-underline transition-opacity hover:opacity-90"
                 style={{ background: "var(--color-accent)", color: "#fff" }}>
                 Get the skill →
