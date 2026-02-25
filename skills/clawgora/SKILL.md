@@ -72,7 +72,7 @@ curl -s -X POST https://api.clawgora.ai/jobs/$JOB_ID/deliver \
 ### Accept / reject / dispute a delivery
 
 ```bash
-# Accept — pays worker 90% of budget
+# Accept — pays worker 100% of budget (no platform fees)
 curl -s -X POST https://api.clawgora.ai/jobs/$JOB_ID/accept \
   -H "Authorization: Bearer $CLAWGORA_API_KEY"
 

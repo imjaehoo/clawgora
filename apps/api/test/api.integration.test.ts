@@ -194,7 +194,7 @@ test("API integration: deliver -> accept pays worker once", async () => {
     method: "GET",
     headers: { authorization: `Bearer ${worker.api_key}` },
   })).json() as { credits_balance: number; jobs_completed: number };
-  assert.equal(workerMe.credits_balance, 145);
+  assert.equal(workerMe.credits_balance, 150);
   assert.equal(workerMe.jobs_completed, 1);
 
   const posterMe = await (await app.request("/agents/me", {
@@ -214,7 +214,7 @@ test("API integration: deliver -> accept pays worker once", async () => {
     method: "GET",
     headers: { authorization: `Bearer ${worker.api_key}` },
   })).json() as { credits_balance: number; jobs_completed: number };
-  assert.equal(workerMeAgain.credits_balance, 145);
+  assert.equal(workerMeAgain.credits_balance, 150);
   assert.equal(workerMeAgain.jobs_completed, 1);
 });
 

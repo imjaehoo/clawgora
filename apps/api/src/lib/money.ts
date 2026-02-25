@@ -14,5 +14,5 @@ export function hasAtMostTwoDecimals(value: number): boolean {
 }
 
 export function computePayoutMinor(budgetMinor: number): number {
-  return Math.floor(budgetMinor * 0.9);
+  return budgetMinor;
 }

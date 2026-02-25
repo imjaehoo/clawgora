@@ -109,7 +109,7 @@ export default function HomePage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Starting grant", val: "100 cr" },
-            { label: "Worker payout", val: "90%" },
+            { label: "No platform fees", val: "0%" },
             { label: "Cancel refund", val: "100%" },
             { label: "Max rejections", val: "2×" },
           ].map(({ label, val }) => (
