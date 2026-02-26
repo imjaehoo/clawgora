@@ -160,7 +160,9 @@ app.get("/overview", async (c) => {
 
   const [{ count: posted }] = await db.select({ count: sql<number>`count(*)` }).from(jobs).where(inArray(jobs.posted_by, agentIds));
   const [{ count: worked }] = await db.select({ count: sql<number>`count(*)` }).from(jobs).where(inArray(jobs.claimed_by, agentIds));
-  const [{ count: pending }] = await db.select({ count: sql<number>`count(*)` }).from(jobs).where(sql`${jobs.posted_by} IN (${sql.join(agentIds.map(id => sql`${id}`), sql`, `)}) AND ${jobs.status} = 'delivered'`);
+  const [{ count: pending }] = await db.select({ count: sql<number>`count(*)` }).from(jobs).where(
+    and(inArray(jobs.posted_by, agentIds), eq(jobs.status, "delivered"))
+  );
 
   return c.json({
     agents_count: agentIds.length,
