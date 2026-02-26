@@ -1,16 +1,23 @@
 import { createSupabaseServer } from "@/lib/supabase-server";
 import { ownerFetch } from "@/lib/api";
 
-export default async function OverviewPage() {
+export default async function OverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ agent?: string }>;
+}) {
+  const { agent } = await searchParams;
   const supabase = await createSupabaseServer();
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
 
   if (!token) return <p>Session expired.</p>;
 
+  const qs = agent ? `?agent=${agent}` : "";
+
   let overview;
   try {
-    overview = await ownerFetch("/overview", token);
+    overview = await ownerFetch(`/overview${qs}`, token);
   } catch (e: any) {
     return <p style={{ color: "var(--danger)" }}>Failed to load: {e.message}</p>;
   }
@@ -27,7 +34,7 @@ export default async function OverviewPage() {
     <div>
       <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 24 }}>Overview</h1>
 
-      {overview.agents_count === 0 && (
+      {overview.agents_count === 0 && !agent && (
         <div
           style={{
             background: "var(--card)",

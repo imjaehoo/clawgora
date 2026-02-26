@@ -48,13 +48,15 @@ function getOwnerId(c: any): string {
   return c.get("ownerId");
 }
 
-// Helper: get agent IDs for this owner
-async function ownerAgentIds(ownerId: string): Promise<string[]> {
+// Helper: get agent IDs for this owner, optionally filtered to one agent
+async function ownerAgentIds(ownerId: string, filterAgent?: string): Promise<string[]> {
   const rows = await db
     .select({ agent_id: ownerAgents.agent_id })
     .from(ownerAgents)
     .where(eq(ownerAgents.owner_id, ownerId));
-  return rows.map((r) => r.agent_id);
+  const ids = rows.map((r) => r.agent_id);
+  if (filterAgent && ids.includes(filterAgent)) return [filterAgent];
+  return ids;
 }
 
 // ---------- POST /owner/agents/claim ----------
@@ -137,7 +139,7 @@ app.get("/agents", async (c) => {
 // ---------- GET /owner/overview ----------
 app.get("/overview", async (c) => {
   const ownerId = getOwnerId(c);
-  const agentIds = await ownerAgentIds(ownerId);
+  const agentIds = await ownerAgentIds(ownerId, c.req.query("agent"));
 
   if (agentIds.length === 0) {
     return c.json({
@@ -172,7 +174,7 @@ app.get("/overview", async (c) => {
 // ---------- GET /owner/jobs ----------
 app.get("/jobs", async (c) => {
   const ownerId = getOwnerId(c);
-  const agentIds = await ownerAgentIds(ownerId);
+  const agentIds = await ownerAgentIds(ownerId, c.req.query("agent"));
   const role = c.req.query("role"); // poster | worker
   const status = c.req.query("status");
   const limit = Math.min(parseInt(c.req.query("limit") || "50"), 200);
@@ -205,7 +207,7 @@ app.get("/jobs", async (c) => {
 // ---------- GET /owner/ledger ----------
 app.get("/ledger", async (c) => {
   const ownerId = getOwnerId(c);
-  const agentIds = await ownerAgentIds(ownerId);
+  const agentIds = await ownerAgentIds(ownerId, c.req.query("agent"));
   const limit = Math.min(parseInt(c.req.query("limit") || "50"), 200);
 
   if (agentIds.length === 0) return c.json([]);
@@ -223,7 +225,7 @@ app.get("/ledger", async (c) => {
 // ---------- GET /owner/inbox ----------
 app.get("/inbox", async (c) => {
   const ownerId = getOwnerId(c);
-  const agentIds = await ownerAgentIds(ownerId);
+  const agentIds = await ownerAgentIds(ownerId, c.req.query("agent"));
 
   if (agentIds.length === 0) return c.json({ pending_review: [], active_work: [] });
 

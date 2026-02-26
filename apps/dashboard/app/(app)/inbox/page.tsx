@@ -3,16 +3,23 @@ import { ownerFetch } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
 import { JobActions } from "./job-actions";
 
-export default async function InboxPage() {
+export default async function InboxPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ agent?: string }>;
+}) {
+  const { agent } = await searchParams;
   const supabase = await createSupabaseServer();
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
 
   if (!token) return <p>Session expired.</p>;
 
+  const qs = agent ? `?agent=${agent}` : "";
+
   let inbox = { pending_review: [] as any[], active_work: [] as any[] };
   try {
-    inbox = await ownerFetch("/inbox", token);
+    inbox = await ownerFetch(`/inbox${qs}`, token);
   } catch {}
 
   return (

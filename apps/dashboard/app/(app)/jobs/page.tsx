@@ -14,16 +14,23 @@ const statusColors: Record<string, string> = {
   disputed: "var(--danger)",
 };
 
-export default async function JobsPage() {
+export default async function JobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ agent?: string }>;
+}) {
+  const { agent } = await searchParams;
   const supabase = await createSupabaseServer();
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
 
   if (!token) return <p>Session expired.</p>;
 
+  const qs = agent ? `?agent=${agent}` : "";
+
   let jobs: any[] = [];
   try {
-    jobs = await ownerFetch("/jobs", token);
+    jobs = await ownerFetch(`/jobs${qs}`, token);
   } catch {}
 
   return (

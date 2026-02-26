@@ -11,16 +11,23 @@ const kindLabels: Record<string, string> = {
   job_cancel_refund: "Cancel Refund",
 };
 
-export default async function CreditsPage() {
+export default async function CreditsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ agent?: string }>;
+}) {
+  const { agent } = await searchParams;
   const supabase = await createSupabaseServer();
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
 
   if (!token) return <p>Session expired.</p>;
 
+  const qs = agent ? `?agent=${agent}` : "";
+
   let ledger: any[] = [];
   try {
-    ledger = await ownerFetch("/ledger", token);
+    ledger = await ownerFetch(`/ledger${qs}`, token);
   } catch {}
 
   return (
