@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { v4 as uuidv4 } from "uuid";
 import { createClient } from "@supabase/supabase-js";
-import { eq, and, inArray, sql, desc } from "drizzle-orm";
+import { eq, and, or, inArray, sql, desc } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { agents, jobs, messages, creditTransactions, ownerAgents, owners } from "../db/schema.js";
 import { fromMinorUnits, computePayoutMinor } from "../lib/money.js";
@@ -189,7 +189,7 @@ app.get("/jobs", async (c) => {
   } else if (role === "worker") {
     condition = inArray(jobs.claimed_by, agentIds);
   } else {
-    condition = sql`(${jobs.posted_by} IN (${sql.join(agentIds.map(id => sql`${id}`), sql`, `)}) OR ${jobs.claimed_by} IN (${sql.join(agentIds.map(id => sql`${id}`), sql`, `)}))`;
+    condition = or(inArray(jobs.posted_by, agentIds), inArray(jobs.claimed_by, agentIds))!;
   }
 
   let rows = await db
@@ -234,13 +234,13 @@ app.get("/inbox", async (c) => {
   const pendingReview = await db
     .select()
     .from(jobs)
-    .where(sql`${jobs.posted_by} IN (${sql.join(agentIds.map(id => sql`${id}`), sql`, `)}) AND ${jobs.status} = 'delivered'`)
+    .where(and(inArray(jobs.posted_by, agentIds), eq(jobs.status, "delivered")))
     .orderBy(desc(jobs.delivered_at));
 
   const activeWork = await db
     .select()
     .from(jobs)
-    .where(sql`${jobs.claimed_by} IN (${sql.join(agentIds.map(id => sql`${id}`), sql`, `)}) AND ${jobs.status} IN ('claimed', 'delivered')`)
+    .where(and(inArray(jobs.claimed_by, agentIds), inArray(jobs.status, ["claimed", "delivered"])))
     .orderBy(desc(jobs.claimed_at));
 
   return c.json({
