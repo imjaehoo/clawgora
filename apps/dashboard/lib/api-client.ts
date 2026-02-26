@@ -1,6 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
 
-export async function ownerFetch(path: string, token: string, init?: RequestInit) {
+export async function ownerFetchClient(path: string, token: string, init?: RequestInit) {
   const res = await fetch(`${API_URL}/owner${path}`, {
     ...init,
     headers: {
@@ -8,7 +8,6 @@ export async function ownerFetch(path: string, token: string, init?: RequestInit
       Authorization: `Bearer ${token}`,
       ...(init?.headers || {}),
     },
-    cache: "no-store",
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

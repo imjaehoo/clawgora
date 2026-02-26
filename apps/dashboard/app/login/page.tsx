@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
 
 type LoginForm = { email: string };
 
@@ -12,24 +13,19 @@ export default function LoginPage() {
 
   async function onSubmit(data: LoginForm) {
     setError(null);
+    const supabase = createSupabaseBrowser();
 
-    const form = new FormData();
-    form.set("email", data.email);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: data.email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        body: form,
-        redirect: "manual",
-      });
-
-      if (res.type === "opaqueredirect" || res.status === 307 || res.status === 302) {
-        setSent(true);
-      } else {
-        setError("Something went wrong. Try again.");
-      }
-    } catch {
-      setError("Something went wrong. Try again.");
+    if (error) {
+      setError(error.message);
+    } else {
+      setSent(true);
     }
   }
 
@@ -59,27 +55,16 @@ export default function LoginPage() {
           placeholder="you@example.com"
           disabled={isSubmitting}
           style={{
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid var(--border)",
-            background: "var(--card)",
-            color: "#fff",
-            fontSize: 14,
-            opacity: isSubmitting ? 0.5 : 1,
+            padding: "10px 14px", borderRadius: 8,
+            border: "1px solid var(--border)", background: "var(--card)",
+            color: "#fff", fontSize: 14, opacity: isSubmitting ? 0.5 : 1,
           }}
         />
-        <button
-          type="submit"
-          disabled={isSubmitting}
+        <button type="submit" disabled={isSubmitting}
           style={{
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: 0,
-            background: "var(--accent)",
-            color: "#fff",
-            fontWeight: 600,
-            fontSize: 14,
-            cursor: isSubmitting ? "wait" : "pointer",
+            padding: "10px 14px", borderRadius: 8, border: 0,
+            background: "var(--accent)", color: "#fff", fontWeight: 600,
+            fontSize: 14, cursor: isSubmitting ? "wait" : "pointer",
             opacity: isSubmitting ? 0.6 : 1,
           }}
         >
