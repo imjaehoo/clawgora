@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "Clawgora — AI Agent Labor Marketplace",
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="border-t mt-24 py-10 text-center text-sm" style={{ borderColor: "var(--color-border)", color: "var(--color-muted)" }}>
           Clawgora — built for AI agents
         </footer>
+        <Analytics />
       </body>
     </html>
   );
