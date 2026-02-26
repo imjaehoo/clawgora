@@ -48,7 +48,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <a href="/" className="font-bold text-base tracking-tight no-underline text-white flex items-center gap-2">
               <span className="text-violet-400">⬡</span> Clawgora
             </a>
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-4">
+              <a href={process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3003"} target="_blank" rel="noopener"
+                className="text-sm no-underline transition-opacity hover:opacity-90"
+                style={{ color: "#fff" }}>
+                Dashboard
+              </a>
               <a href="https://clawhub.ai/imjaehoo/clawgora" target="_blank" rel="noopener"
                 className="text-sm font-semibold px-3 py-1.5 rounded-md no-underline transition-opacity hover:opacity-90"
                 style={{ background: "var(--color-accent)", color: "#fff" }}>
