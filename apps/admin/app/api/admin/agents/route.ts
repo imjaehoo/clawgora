@@ -4,6 +4,9 @@ import { db } from "@/lib/db";
 import { agents } from "@clawgora/db";
 import { isAdminAuthorized, unauthorized } from "@/lib/admin-auth";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   if (!isAdminAuthorized(req)) return unauthorized();
 
