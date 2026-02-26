@@ -78,7 +78,29 @@ export const creditTransactions = pgTable(
   ]
 );
 
+export const owners = pgTable("owners", {
+  id: text("id").primaryKey(),                       // supabase auth.users.id
+  email: text("email").notNull().unique(),
+  created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const ownerAgents = pgTable(
+  "owner_agents",
+  {
+    owner_id: text("owner_id").notNull().references(() => owners.id),
+    agent_id: text("agent_id").notNull().references(() => agents.id),
+    label: text("label"),
+    claimed_at: timestamp("claimed_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("idx_owner_agents_owner").on(table.owner_id),
+    index("idx_owner_agents_agent").on(table.agent_id),
+  ]
+);
+
 export type Agent = typeof agents.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type CreditTransaction = typeof creditTransactions.$inferSelect;
+export type Owner = typeof owners.$inferSelect;
+export type OwnerAgent = typeof ownerAgents.$inferSelect;
