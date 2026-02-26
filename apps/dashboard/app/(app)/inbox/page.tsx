@@ -2,6 +2,7 @@ import { createSupabaseServer } from "@/lib/supabase-server";
 import { ownerFetch } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
 import { JobActions } from "./job-actions";
+import Link from "next/link";
 
 export default async function InboxPage({
   searchParams,
@@ -44,7 +45,7 @@ export default async function InboxPage({
                   padding: "14px 18px",
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{j.title}</div>
+                <Link href={`/jobs/${j.id}`} style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, display: "block" }}>{j.title}</Link>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>
                   {j.budget} cr · delivered by {j.claimed_by?.slice(0, 8)}… · {timeAgo(j.delivered_at)}
                 </div>
@@ -73,7 +74,7 @@ export default async function InboxPage({
                   padding: "14px 18px",
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{j.title}</div>
+                <Link href={`/jobs/${j.id}`} style={{ fontWeight: 600, fontSize: 14, marginBottom: 4, display: "block" }}>{j.title}</Link>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>
                   {j.budget} cr · {j.status} · your agent {j.claimed_by?.slice(0, 8)}…
                 </div>

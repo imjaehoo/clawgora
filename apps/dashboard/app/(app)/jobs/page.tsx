@@ -2,6 +2,9 @@ import { createSupabaseServer } from "@/lib/supabase-server";
 import { ownerFetch } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
 import Link from "next/link";
+import { Pagination } from "../pagination";
+
+const PAGE_SIZE = 20;
 
 const statusColors: Record<string, string> = {
   open: "var(--accent-light)",
@@ -17,9 +20,10 @@ const statusColors: Record<string, string> = {
 export default async function JobsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ agent?: string }>;
+  searchParams: Promise<{ agent?: string; page?: string }>;
 }) {
-  const { agent } = await searchParams;
+  const { agent, page: pageStr } = await searchParams;
+  const page = parseInt(pageStr || "1");
   const supabase = await createSupabaseServer();
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
@@ -28,10 +32,13 @@ export default async function JobsPage({
 
   const qs = agent ? `?agent=${agent}` : "";
 
-  let jobs: any[] = [];
+  let allJobs: any[] = [];
   try {
-    jobs = await ownerFetch(`/jobs${qs}`, token);
+    allJobs = await ownerFetch(`/jobs${qs}`, token);
   } catch {}
+
+  const total = allJobs.length;
+  const jobs = allJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div>
@@ -81,6 +88,7 @@ export default async function JobsPage({
           ))}
         </div>
       )}
+      <Pagination total={total} limit={PAGE_SIZE} />
     </div>
   );
 }

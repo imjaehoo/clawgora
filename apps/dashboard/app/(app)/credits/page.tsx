@@ -1,6 +1,9 @@
 import { createSupabaseServer } from "@/lib/supabase-server";
 import { ownerFetch } from "@/lib/api";
 import { timeAgo } from "@/lib/time";
+import { Pagination } from "../pagination";
+
+const PAGE_SIZE = 30;
 
 const kindLabels: Record<string, string> = {
   signup_grant: "Signup Grant",
@@ -14,9 +17,10 @@ const kindLabels: Record<string, string> = {
 export default async function CreditsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ agent?: string }>;
+  searchParams: Promise<{ agent?: string; page?: string }>;
 }) {
-  const { agent } = await searchParams;
+  const { agent, page: pageStr } = await searchParams;
+  const page = parseInt(pageStr || "1");
   const supabase = await createSupabaseServer();
   const { data: { session } } = await supabase.auth.getSession();
   const token = session?.access_token;
@@ -25,10 +29,13 @@ export default async function CreditsPage({
 
   const qs = agent ? `?agent=${agent}` : "";
 
-  let ledger: any[] = [];
+  let allLedger: any[] = [];
   try {
-    ledger = await ownerFetch(`/ledger${qs}`, token);
+    allLedger = await ownerFetch(`/ledger${qs}`, token);
   } catch {}
+
+  const total = allLedger.length;
+  const ledger = allLedger.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div>
@@ -68,6 +75,7 @@ export default async function CreditsPage({
           </tbody>
         </table>
       )}
+      <Pagination total={total} limit={PAGE_SIZE} />
     </div>
   );
 }

@@ -9,12 +9,12 @@ const topNav = [
 ];
 
 const bottomNav = [
-  { href: "/jobs", label: "Jobs" },
-  { href: "/credits", label: "Credits" },
-  { href: "/inbox", label: "Inbox" },
+  { href: "/jobs", label: "Jobs", badge: false },
+  { href: "/credits", label: "Credits", badge: false },
+  { href: "/inbox", label: "Inbox", badge: true },
 ];
 
-function NavItem({ href, label }: { href: string; label: string }) {
+function NavItem({ href, label, badgeCount }: { href: string; label: string; badgeCount?: number }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const agent = searchParams.get("agent");
@@ -25,7 +25,9 @@ function NavItem({ href, label }: { href: string; label: string }) {
     <Link
       href={fullHref}
       style={{
-        display: "block",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
         padding: "8px 12px",
         borderRadius: 6,
         fontSize: 14,
@@ -36,11 +38,25 @@ function NavItem({ href, label }: { href: string; label: string }) {
       }}
     >
       {label}
+      {!!badgeCount && badgeCount > 0 && (
+        <span style={{
+          background: "var(--danger)",
+          color: "#fff",
+          fontSize: 11,
+          fontWeight: 700,
+          padding: "1px 6px",
+          borderRadius: 10,
+          minWidth: 18,
+          textAlign: "center",
+        }}>
+          {badgeCount}
+        </span>
+      )}
     </Link>
   );
 }
 
-export function Nav({ agentSwitcher }: { agentSwitcher: React.ReactNode }) {
+export function Nav({ agentSwitcher, inboxCount }: { agentSwitcher: React.ReactNode; inboxCount?: number }) {
   return (
     <nav style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {topNav.map(({ href, label }) => (
@@ -52,8 +68,8 @@ export function Nav({ agentSwitcher }: { agentSwitcher: React.ReactNode }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 4 }}>
-        {bottomNav.map(({ href, label }) => (
-          <NavItem key={href} href={href} label={label} />
+        {bottomNav.map(({ href, label, badge }) => (
+          <NavItem key={href} href={href} label={label} badgeCount={badge ? inboxCount : undefined} />
         ))}
       </div>
     </nav>

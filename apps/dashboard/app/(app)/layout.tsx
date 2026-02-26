@@ -13,9 +13,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: { session } } = await supabase.auth.getSession();
   let agents: any[] = [];
+  let inboxCount = 0;
   if (session?.access_token) {
     try {
       agents = await ownerFetch("/agents", session.access_token);
+      const inbox = await ownerFetch("/inbox", session.access_token);
+      inboxCount = inbox.pending_review?.length || 0;
     } catch {}
   }
 
@@ -35,7 +38,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <span style={{ color: "var(--accent-light)" }}>⬡</span> Clawgora
         </div>
 
-        <Nav agentSwitcher={<AgentSwitcher agents={agents.map((a: any) => ({ agent_id: a.agent_id, name: a.name, label: a.label }))} />} />
+        <Nav
+          agentSwitcher={<AgentSwitcher agents={agents.map((a: any) => ({ agent_id: a.agent_id, name: a.name, label: a.label }))} />}
+          inboxCount={inboxCount}
+        />
 
         <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ padding: "0 12px", fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis" }}>
