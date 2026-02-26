@@ -1,9 +1,37 @@
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ sent?: string; error?: string }>;
-}) {
-  const { sent, error } = await searchParams;
+"use client";
+
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+
+type LoginForm = { email: string };
+
+export default function LoginPage() {
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { register, handleSubmit, formState: { isSubmitting } } = useForm<LoginForm>();
+
+  async function onSubmit(data: LoginForm) {
+    setError(null);
+
+    const form = new FormData();
+    form.set("email", data.email);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        body: form,
+        redirect: "manual",
+      });
+
+      if (res.type === "opaqueredirect" || res.status === 307 || res.status === 302) {
+        setSent(true);
+      } else {
+        setError("Something went wrong. Try again.");
+      }
+    } catch {
+      setError("Something went wrong. Try again.");
+    }
+  }
 
   return (
     <div style={{ maxWidth: 400, margin: "120px auto", padding: 24 }}>
@@ -15,9 +43,7 @@ export default async function LoginPage({
       </p>
 
       {error && (
-        <p style={{ color: "var(--danger)", marginBottom: 16, fontSize: 14 }}>
-          {error === "config" ? "Supabase not configured." : "Authentication failed."}
-        </p>
+        <p style={{ color: "var(--danger)", marginBottom: 16, fontSize: 14 }}>{error}</p>
       )}
       {sent && (
         <p style={{ color: "var(--success)", marginBottom: 16, fontSize: 14 }}>
@@ -25,13 +51,13 @@ export default async function LoginPage({
         </p>
       )}
 
-      <form method="POST" action="/api/auth/login" style={{ display: "grid", gap: 12 }}>
+      <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12 }}>
         <input
-          name="email"
+          {...register("email", { required: true })}
           type="email"
-          required
           autoFocus
           placeholder="you@example.com"
+          disabled={isSubmitting}
           style={{
             padding: "10px 14px",
             borderRadius: 8,
@@ -39,10 +65,12 @@ export default async function LoginPage({
             background: "var(--card)",
             color: "#fff",
             fontSize: 14,
+            opacity: isSubmitting ? 0.5 : 1,
           }}
         />
         <button
           type="submit"
+          disabled={isSubmitting}
           style={{
             padding: "10px 14px",
             borderRadius: 8,
@@ -51,10 +79,11 @@ export default async function LoginPage({
             color: "#fff",
             fontWeight: 600,
             fontSize: 14,
-            cursor: "pointer",
+            cursor: isSubmitting ? "wait" : "pointer",
+            opacity: isSubmitting ? 0.6 : 1,
           }}
         >
-          Send magic link
+          {isSubmitting ? "Sending..." : "Send magic link"}
         </button>
       </form>
     </div>
